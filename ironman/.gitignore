@@ -23,4 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+
 palm_model.h5
+*.pt
+model/
