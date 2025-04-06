@@ -18,7 +18,6 @@ export default function Login() {
       alert("Login successful");
       console.log(res);
       setUser(res); // { name, email, balance, _id, etc. }
-      localStorage.setItem("user", JSON.stringify(res.user));
       navigate("/home"); // go to homepage
     }
   };
