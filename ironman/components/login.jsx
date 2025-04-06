@@ -12,7 +12,7 @@ export default function Login() {
       alert(res.error);
     } else {
       alert("Login successful");
-      console.log(res); // Contains role, balance, etc.
+      console.log(res);
     }
   };
 
