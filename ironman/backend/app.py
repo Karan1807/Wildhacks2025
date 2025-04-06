@@ -10,7 +10,7 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
 # MongoDB setup — replace with your own connection string
 client = MongoClient(
-    "mongodb+srv://repulser_user:aFY09Gs2v9LHmI3Q@cluster0.y0alncz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    ""
 )
 db = client["repulser"]
 users = db["users"]
