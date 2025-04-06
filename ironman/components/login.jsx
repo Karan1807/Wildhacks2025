@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { login } from "../server/api";
+import "../styles/login.css"; // Import the styles
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const res = await login(form);
     if (res.error) {
@@ -16,10 +17,28 @@ export default function Login() {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input placeholder="Email" type="email" onChange={e => setForm({ ...form, email: e.target.value })} />
-      <input placeholder="Password" type="password" onChange={e => setForm({ ...form, password: e.target.value })} />
-      <button type="submit">Login</button>
-    </form>
+    <div className="login-container">
+      <form className="login-form" onSubmit={handleLogin}>
+        <h2 className="login-title">Welcome Back</h2>
+
+        <input
+          type="email"
+          placeholder="Email"
+          className="login-input"
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="login-input"
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          required
+        />
+        <button type="submit" className="login-button">
+          Login
+        </button>
+      </form>
+    </div>
   );
 }

@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+from pymongo import MongoClient
+
+load_dotenv()  # loads variables from .env into environment
+
 
 # Initialize app
 app = Flask(__name__)
@@ -8,10 +14,8 @@ app = Flask(__name__)
 # Enable CORS for specific frontend origin
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
-# MongoDB setup — replace with your own connection string
-client = MongoClient(
-    ""
-)
+MONGO_URI = os.getenv("MONGO_URI")
+client = MongoClient(MONGO_URI)
 db = client["repulser"]
 users = db["users"]
 
