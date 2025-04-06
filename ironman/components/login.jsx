@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import { login } from "../server/api";
 import "../styles/login.css"; // Import the styles
+import { useUser } from "../backend/context/context";
+import { useNavigate } from "react-router-dom"; // assuming react-router
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
+  const { setUser } = useUser();
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -13,6 +17,9 @@ export default function Login() {
     } else {
       alert("Login successful");
       console.log(res);
+      setUser(res); // { name, email, balance, _id, etc. }
+      localStorage.setItem("user", JSON.stringify(res.user));
+      navigate("/home"); // go to homepage
     }
   };
 

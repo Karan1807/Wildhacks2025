@@ -424,6 +424,41 @@ def match_palm():
     except Exception as e:
         print("❌ Error during palm match:", e)
         return jsonify({"success": False, "error": str(e)}), 500
+    
+
+@app.route("/perform_transaction", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def perform_transaction():
+    data = request.get_json()
+    user_id = data["user_id"]
+    amount = float(data["amount"])
+    owner_email = "admin@repulser.com"  # or get from data if needed
+
+    user = users.find_one({"_id": ObjectId(user_id)})
+    owner = users.find_one({"email": owner_email})
+
+    if not user or not owner:
+        return jsonify({"error": "User or owner not found"}), 404
+
+    if user["balance"] < amount:
+        return jsonify({"error": "Insufficient balance"}), 400
+
+    # Update balances
+    users.update_one({"_id": ObjectId(user_id)}, {"$inc": {"balance": -amount}})
+    users.update_one({"email": owner_email}, {"$inc": {"balance": amount}})
+
+    # Add transaction logs
+    transaction = {
+        "from": user["email"],
+        "to": owner_email,
+        "amount": amount,
+        "timestamp": datetime.datetime.now(),
+    }
+
+    users.update_one({"_id": ObjectId(user_id)}, {"$push": {"transactions": transaction}})
+    users.update_one({"email": owner_email}, {"$push": {"transactions": transaction}})
+
+    return jsonify({"message": "Transaction successful"}), 200
 
 
 # -------------------- Run Server ----------------------
