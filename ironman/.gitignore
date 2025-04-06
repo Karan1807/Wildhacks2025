@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+*.h5
 
 /ironman/backend/model/palm_model.h5
