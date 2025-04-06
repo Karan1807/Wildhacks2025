@@ -1,108 +1,10 @@
-// import React, { useRef, useState } from "react";
-
-// const PalmScan = () => {
-//   const videoRef = useRef(null);
-//   const canvasRef = useRef(null);
-//   const [scanning, setScanning] = useState(false);
-//   const [message, setMessage] = useState("");
-
-//   const startCamera = async () => {
-//     try {
-//       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-//       videoRef.current.srcObject = stream;
-//     } catch (error) {
-//       console.error("Error accessing webcam:", error);
-//       setMessage("🚫 Unable to access webcam.");
-//     }
-//   };
-
-//   const captureImage = () => {
-//     const context = canvasRef.current.getContext("2d");
-//     context.drawImage(videoRef.current, 0, 0, 224, 224);
-//     return canvasRef.current.toDataURL("image/jpeg");
-//   };
-
-//   const scanLoop = async () => {
-//     setMessage("🔍 Scanning...");
-//     setScanning(true);
-
-//     let matchFound = false;
-
-//     for (let i = 0; i < 5; i++) {
-//       const image = captureImage();
-
-//       try {
-//         const response = await fetch("http://localhost:3001/match_palm", {
-//           method: "POST",
-//           headers: { "Content-Type": "application/json" },
-//           body: JSON.stringify({ image }),
-//           credentials: "include",
-//           mode: "cors",
-//         });
-
-//         if (!response.ok) {
-//           const text = await response.text();
-//           throw new Error(`HTTP ${response.status} - ${text}`);
-//         }
-
-//         const data = await response.json();
-//         console.log("Match response:", data);
-
-//         // If any response contains match or fallback true, mark as matched
-//         if (data.match === true || data.fallback === true) {
-//           matchFound = true;
-//         }
-
-//       } catch (err) {
-//         console.error("Error sending image:", err);
-//       }
-
-//       await new Promise((res) => setTimeout(res, 1000)); // Wait between frames
-//     }
-
-//     setScanning(false);
-//     setMessage(matchFound ? "✅ Palm match successful!" : "❌ No match found.");
-//   };
-
-//   const startPalmScan = () => {
-//     setMessage("");
-//     scanLoop();
-//   };
-
-//   return (
-//     <div style={{ textAlign: "center" }}>
-//       <h2>🖐️ Scan Your Palm</h2>
-//       <video
-//         ref={videoRef}
-//         autoPlay
-//         style={{ width: "300px", borderRadius: "12px" }}
-//       />
-//       <canvas
-//         ref={canvasRef}
-//         width="224"
-//         height="224"
-//         style={{ display: "none" }}
-//       />
-//       <br />
-//       <button onClick={startCamera}>Start Camera</button>
-//       <button
-//         onClick={startPalmScan}
-//         disabled={scanning}
-//         style={{ marginLeft: "10px" }}
-//       >
-//         {scanning ? "Scanning..." : "Start Palm Scan"}
-//       </button>
-//       <p style={{ marginTop: "20px", fontWeight: "bold", fontSize: "18px" }}>
-//         {message}
-//       </p>
-//     </div>
-//   );
-// };
-
-// export default PalmScan;
 import React, { useRef, useState } from "react";
+import { useUser } from "../backend/context/context";
+import { useNavigate } from "react-router-dom";
 
 const PalmScan = () => {
+  const { user } = useUser(); // Logged-in user (receiver)
+  const navigate = useNavigate();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [scanning, setScanning] = useState(false);
@@ -125,26 +27,41 @@ const PalmScan = () => {
     return canvasRef.current.toDataURL("image/jpeg");
   };
 
-  const triggerTransaction = async () => {
+  const triggerTransaction = async (senderId) => {
     try {
+      console.log("Sending to backend:", {
+        amount,
+        receiverId: user?.id, // ✅ fix here
+        senderId
+      });
+  
       const response = await fetch("http://localhost:3001/receive_money", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        headers: {
+          "Content-Type": "application/json"
+        },
         credentials: "include",
-        mode: "cors",
+        body: JSON.stringify({
+          amount,
+          receiverId: user?.id, // ✅ fix here
+          senderId
+        })
       });
-
+  
+      const result = await response.json();
+  
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`HTTP ${response.status} - ${text}`);
+        console.error("Transaction failed:", result);
+        setMessage(`❌ Transaction failed: ${result.error || "Unknown error"}`);
+        return;
       }
-
-      const data = await response.json();
-      setMessage(`💸 Transaction successful! ₹${data.transferred}`);
-    } catch (err) {
-      console.error("Error in transaction:", err);
-      setMessage("❌ Transaction failed.");
+  
+      console.log("Transaction successful:", result);
+      setMessage("✅ Transaction completed!");
+      navigate("/home", { state: { transaction: result } });
+    } catch (error) {
+      console.error("Transaction error:", error);
+      setMessage("❌ Network error or server is down.");
     }
   };
 
@@ -152,6 +69,7 @@ const PalmScan = () => {
     setMessage("🔍 Scanning...");
     setScanning(true);
     let matchFound = false;
+    let matchedUser = null;
 
     for (let i = 0; i < 5; i++) {
       const image = captureImage();
@@ -173,12 +91,13 @@ const PalmScan = () => {
         const data = await response.json();
         console.log(`Frame ${i + 1}:`, data);
 
-        if (data.match === true || data.success === true) {
+        if (data.success === true) {
           matchFound = true;
+          matchedUser = data.user; // Sender info
           break;
         }
       } catch (err) {
-        console.error("Error sending image:", err);
+        console.error("Image send error:", err);
       }
 
       setMessage(`🔍 Scanning frame ${i + 1} of 5...`);
@@ -187,10 +106,20 @@ const PalmScan = () => {
 
     setScanning(false);
 
-    if (matchFound) {
-      setMessage("✅ Palm match successful! Processing transaction...");
-      await triggerTransaction();
-    } else {
+    if (matchFound && matchedUser) {
+      if (matchedUser._id === user._id) {
+        setMessage("⚠️ You can't send money to yourself.");
+        return;
+      }
+      
+      console.log("Matched user:", matchedUser);
+  console.log("Logged-in user (receiver):", user);
+
+    
+      setMessage("✅ Palm match found. Processing transaction...");
+      await triggerTransaction(matchedUser._id);
+    }
+     else {
       setMessage("❌ No match found. Transaction aborted.");
     }
   };

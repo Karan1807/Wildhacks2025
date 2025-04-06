@@ -174,6 +174,7 @@ from dotenv import load_dotenv
 from model.utils import preprocess_image, extract_embedding
 from config import build_model
 import cv2
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -188,6 +189,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client["repulser"]
 users = db["users"]
+transactions_collection = db["transactions"]  # ✅ add this line
 
 # Load models
 model, embedding_model = build_model()
@@ -299,6 +301,17 @@ def register_with_palm():
     return jsonify({"message": "Registered user + palm embeddings successfully!"}), 200
 
 
+from flask import request, jsonify, session
+from flask_cors import cross_origin
+import base64
+import numpy as np
+import cv2
+from sklearn.metrics.pairwise import cosine_similarity
+from bson import ObjectId
+
+app.secret_key = "JAIMATAJIIIIIIIIIIIIII"
+
+
 @app.route("/match_palm", methods=["POST"])
 @cross_origin(supports_credentials=True, origins="http://localhost:5173")
 def match_palm():
@@ -317,8 +330,8 @@ def match_palm():
         embedding = embedding / np.linalg.norm(embedding)
 
         # Thresholds
-        per_emb_threshold = 0.3  # Minimum similarity per embedding
-        overall_threshold = 0.35  # Average of best matches required
+        per_emb_threshold = 0.3
+        overall_threshold = 0.35
 
         best_match = None
         best_score = 0
@@ -353,8 +366,10 @@ def match_palm():
                     best_score = avg_similarity
                     best_match = user
 
-        # Main match condition
         if best_match and best_score >= overall_threshold:
+            session["matched_user_id"] = str(
+                best_match["_id"]
+            )  # ✅ Store matched user for transaction
             print(f"\nBEST MATCH → User: {best_match['name']}, Score: {best_score:.6f}")
             print("--- End of Debug Log ---\n")
             return (
@@ -374,7 +389,7 @@ def match_palm():
                 200,
             )
 
-        # Fallback strategy: pick top single similarity match if nothing meets above criteria
+        # Fallback strategy
         print("\n--- Fallback Check ---")
         fallback_best_user = None
         fallback_best_similarity = 0
@@ -395,6 +410,9 @@ def match_palm():
                     fallback_best_user = user
 
         if fallback_best_user and fallback_best_similarity > 0.30:
+            session["matched_user_id"] = str(
+                fallback_best_user["_id"]
+            )  # ✅ Store fallback match
             print(
                 f"\nFALLBACK MATCH → User: {fallback_best_user['name']}, Score: {fallback_best_similarity:.6f}"
             )
@@ -416,7 +434,6 @@ def match_palm():
                 200,
             )
 
-        # If no match at all
         print("❌ No match found.")
         print("--- End of Debug Log ---\n")
         return jsonify({"success": False, "message": "No matching palm found."}), 404
@@ -424,41 +441,93 @@ def match_palm():
     except Exception as e:
         print("❌ Error during palm match:", e)
         return jsonify({"success": False, "error": str(e)}), 500
-    
+ 
+from bson.objectid import ObjectId
+from bson.errors import InvalidId
 
-@app.route("/perform_transaction", methods=["POST"])
-@cross_origin(supports_credentials=True)
-def perform_transaction():
+@app.route("/receive_money", methods=["POST"])
+@cross_origin(supports_credentials=True, origins="http://localhost:5173")
+def receive_money():
     data = request.get_json()
-    user_id = data["user_id"]
-    amount = float(data["amount"])
-    owner_email = "admin@repulser.com"  # or get from data if needed
+    print("Received transaction data:", data)
 
-    user = users.find_one({"_id": ObjectId(user_id)})
-    owner = users.find_one({"email": owner_email})
+    if not data:
+        return jsonify({"error": "No data received"}), 400
 
-    if not user or not owner:
-        return jsonify({"error": "User or owner not found"}), 404
+    receiver_id = data.get("receiverId")
+    sender_id = data.get("senderId")
 
-    if user["balance"] < amount:
+    try:
+        amount = float(data.get("amount"))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid amount"}), 400
+
+    if not receiver_id or not sender_id:
+        return jsonify({"error": "Missing sender or receiver ID"}), 400
+
+    try:
+        sender = users.find_one({"_id": ObjectId(sender_id)})
+        receiver = users.find_one({"_id": ObjectId(receiver_id)})
+    except InvalidId:
+        return jsonify({"error": "Invalid sender or receiver ID format"}), 400
+
+    if not sender or not receiver:
+        return jsonify({"error": "Sender or receiver not found"}), 404
+
+    if sender["_id"] == receiver["_id"]:
+        return jsonify({"error": "You can't send money to yourself"}), 400
+
+    if sender["balance"] < amount:
         return jsonify({"error": "Insufficient balance"}), 400
 
-    # Update balances
-    users.update_one({"_id": ObjectId(user_id)}, {"$inc": {"balance": -amount}})
-    users.update_one({"email": owner_email}, {"$inc": {"balance": amount}})
+    # Perform transaction
+    users.update_one({"_id": ObjectId(sender_id)}, {"$inc": {"balance": -amount}})
+    users.update_one({"_id": ObjectId(receiver_id)}, {"$inc": {"balance": amount}})
 
-    # Add transaction logs
-    transaction = {
-        "from": user["email"],
-        "to": owner_email,
+    transactions_collection.insert_one({
+        "from": sender_id,
+        "to": receiver_id,
         "amount": amount,
-        "timestamp": datetime.datetime.now(),
-    }
+    })
 
-    users.update_one({"_id": ObjectId(user_id)}, {"$push": {"transactions": transaction}})
-    users.update_one({"email": owner_email}, {"$push": {"transactions": transaction}})
+    return jsonify({
+        "message": "Transaction successful",
+        "from": sender.get("name", "Unknown Sender"),
+        "to": receiver.get("name", "Unknown Receiver"),
+        "amount": amount
+    }), 200
 
-    return jsonify({"message": "Transaction successful"}), 200
+
+@app.route("/get_user/<user_id>", methods=["GET"])
+def get_user(user_id):
+    try:
+        user = users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        return jsonify({
+            "_id": str(user["_id"]),
+            "name": user["name"],
+            "balance": user["balance"],
+            "transactions": user.get("transactions", [])
+        })
+    except Exception as e:
+        print("Error in /get_user:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/get_transactions/<user_id>", methods=["GET"])
+def get_transactions(user_id):
+    transactions = list(db.transactions.find({
+        "$or": [
+            {"sender_id": user_id},
+            {"receiver_id": user_id}
+        ]
+    }).sort("timestamp", -1))  # Optional: sort by latest
+
+    for txn in transactions:
+        txn["_id"] = str(txn["_id"])
+
+    return jsonify(transactions)
 
 
 # -------------------- Run Server ----------------------

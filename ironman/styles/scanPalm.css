@@ -1,0 +1,241 @@
+/* Outer Container - Centered Card Style */
+.palm-scan-container {
+    max-width: 90%;
+    width: 1000px;
+    margin: clamp(2rem, 8%, 5rem) auto;
+    padding: clamp(1rem, 4vw, 2rem);
+    text-align: center;
+    background: rgba(20, 20, 20, 0.412);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    
+    transition: all 0.3s ease;
+  }
+  
+  /* Title */
+  .palm-scan-title {
+    font-size: clamp(1.2rem, 4vw, 1.6rem);
+    margin-bottom: clamp(1rem, 5vw, 1.8rem);
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  /* Camera Preview / User Image */
+  .palm-scan-video {
+    width: 400%;
+    max-width: 500px;
+    height: auto;
+    aspect-ratio: 4/3;
+    border-radius: 12px;
+    margin: 0 auto clamp(0.8rem, 3vw, 1.2rem) auto;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  /* Input Field */
+  .amount-input {
+    width: 100%;
+    padding: clamp(0.7rem, 2.5vw, 0.9rem);
+    margin-bottom: clamp(1rem, 4vw, 1.5rem);
+    border-radius: 10px;
+    border: none;
+    background: rgba(0, 0, 0, 0.08);
+    color: white;
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+    text-align: center;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+  
+  .amount-input:focus {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.4);
+  }
+  
+  .amount-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  /* Button Group - side by side already set */
+.button-group {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: clamp(0.6rem, 2vw, 1rem);
+    margin-bottom: clamp(0.8rem, 3vw, 1.2rem);
+  }
+  
+  /* Generic Button Base Style */
+  .scan-button {
+    flex: 1;
+    padding: clamp(0.7rem, 2.5vw, 1rem);
+    border-radius: 12px;
+    font-size: clamp(1rem, 2.5vw, 1.1rem);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    border: none;
+    color: rgba(105, 90, 90, 0.775);
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Glowing hover background effect */
+  .scan-button::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    transition: 0.4s ease;
+    opacity: 0;
+  }
+  
+  /* Text on top of hover effect */
+  .scan-button span {
+    position: relative;
+    z-index: 2;
+  }
+  
+  /* Start Camera - Arc Reactor Blue */
+  .start-camera {
+    background: #547779;
+    color: #000;
+    box-shadow: 0 0 10px #000000, 0 0 25px #00f2ff40;
+  }
+  
+  .start-camera:hover {
+    background: #00c9e0;
+    box-shadow: 0 0 15px #00f2ff, 0 0 30px #00f2ff60;
+    transform: scale(1.05);
+  }
+  
+  /* Receive Money - Stark Red/Gold */
+  .receive-money {
+    background: linear-gradient(135deg, #6b3f3f, #947e54);
+    color: #fff;
+    box-shadow: 0 0 10px #000000, 0 0 25px #fcbf4940;
+  }
+  
+  .receive-money:hover:not(:disabled) {
+    background: linear-gradient(135deg, #76252d, #5c4f2d);
+    box-shadow: 0 0 15px #fcbf49, 0 0 30px #000000;
+    transform: scale(1.05);
+  }
+  
+  /* Disabled state */
+  .receive-money:disabled {
+    background: #444;
+    color: rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+  
+  
+  /* Status Message */
+  .status-message {
+    margin-top: clamp(0.8rem, 3vw, 1.2rem);
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+    min-height: 1.5rem;
+    text-align: center;
+    font-weight: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    line-height: 1.4;
+    transition: all 0.3s ease;
+  }
+  
+  /* Message States */
+  .status-success {
+    color: #28a745;
+  }
+  
+  .status-error {
+    color: #dc3545;
+  }
+  
+  .status-warning {
+    color: #ffc107;
+  }
+  
+  .status-scanning {
+    color: #17a2b8;
+  }
+  
+  /* Canvas (hidden) */
+  .scan-canvas {
+    display: none;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 600px) {
+    .palm-scan-container {
+      max-width: 95%;
+      margin-top: clamp(1rem, 5vw, 3rem);
+      padding: clamp(1rem, 4vw, 1.5rem);
+    }
+  
+    .button-group {
+      gap: clamp(0.5rem, 2vw, 0.8rem);
+    }
+  
+    .scan-button {
+      font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+    }
+    
+    /* For small phones */
+    .palm-scan-video {
+      max-width: 220px;
+    }
+  }
+  
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .palm-scan-container {
+      background: rgba(15, 15, 15, 0.9);
+    }
+  }
+  
+  /* Responsive layout for different orientations */
+  @media (orientation: landscape) and (max-height: 600px) {
+    .palm-scan-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 1rem;
+      align-items: center;
+      max-width: 90%;
+      width: 650px;
+    }
+    
+    .palm-scan-title {
+      grid-column: 1 / -1;
+    }
+    
+    .palm-scan-video {
+      grid-column: 1;
+      margin: 0 auto;
+    }
+    
+    .button-group {
+      grid-column: 2;
+    }
+    
+    .amount-input {
+      grid-column: 2;
+      margin-bottom: 0.8rem;
+    }
+    
+    .status-message {
+      grid-column: 1 / -1;
+    }
+  }

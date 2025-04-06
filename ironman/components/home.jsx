@@ -1,34 +1,62 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useUser } from "../backend/context/context";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import "../styles/home.css";
 
 export default function Home() {
-  const { user } = useUser();
+  const { user, setUser } = useUser();
+  const [transactions, setTransactions] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (user && user._id) {
+      const fetchUser = async () => {
+        try {
+          const res = await fetch(`http://localhost:3001/get_user/${user._id}`);
+          const data = await res.json();
+          if (data && data.id) {
+            setUser(data); // Update context with fresh data
+          }
+        } catch (err) {
+          console.error("Failed to fetch user:", err);
+        }
+      };
+  
+      const fetchTransactions = async () => {
+        try {
+          const res = await fetch(`http://localhost:3001/get_transactions/${user._id}`);
+          const data = await res.json();
+          setTransactions(data || []);
+        } catch (err) {
+          console.error("Failed to fetch transactions:", err);
+        }
+      };
+  
+      fetchUser();
+      fetchTransactions();
+    } else {
+      console.warn("User or user._id is undefined:", user);
+    }
+  }, [location]);
+  
 
   if (!user) {
     return <div className="loading">Loading user info...</div>;
   }
 
   const walletBalance = user.balance || 0;
-  const transactions = user.transactions || []; // Make sure your context provides this
 
   return (
     <div className="stark-wallet-app">
       <div className="stark-wallet-container">
         {/* Navbar */}
         <nav className="stark-navbar">
-          <div className="navbar-brand">
-            {/* You can put logo or app name here */}
-          </div>
-
           <div className="navbar-menu">
-            <Link to="/home" className={`nav-item`}>
+            <Link to="/home" className="nav-item">
               DASHBOARD
             </Link>
-            {/* Add more nav items as needed */}
           </div>
         </nav>
 
@@ -65,30 +93,43 @@ export default function Home() {
           <div className="transaction-section">
             <div className="transactions-list">
               {transactions.length > 0 ? (
-                transactions.map((transaction, index) => (
-                  <div key={index} className="transaction-item">
-                    <div className="transaction-icon-container">
-                      <div className={`transaction-icon ${transaction.type}`}>
-                        {transaction.type === "credit" ? "↓" : "↑"}
+                transactions.map((transaction, index) => {
+                  const isCredit = transaction.receiver_id === user._id;
+                  const name = isCredit
+                    ? transaction.sender_name || "Sender"
+                    : transaction.receiver_name || "Receiver";
+                  const date = new Date(transaction.timestamp).toLocaleString();
+
+                  return (
+                    <div key={index} className="transaction-item">
+                      <div className="transaction-icon-container">
+                        <div
+                          className={`transaction-icon ${
+                            isCredit ? "credit" : "debit"
+                          }`}
+                        >
+                          {isCredit ? "↓" : "↑"}
+                        </div>
                       </div>
+                      <div className="transaction-details">
+                        <div className="transaction-name">{name}</div>
+                        <div className="transaction-date">{date}</div>
+                      </div>
+                      <div
+                        className={`transaction-amount ${
+                          isCredit ? "credit" : "debit"
+                        }`}
+                      >
+                        {isCredit ? "+" : "-"}₹
+                        {Math.abs(transaction.amount).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div className="transaction-dropdown">▼</div>
                     </div>
-
-                    <div className="transaction-details">
-                      <div className="transaction-name">{transaction.name}</div>
-                      <div className="transaction-date">{transaction.date}</div>
-                    </div>
-
-                    <div className={`transaction-amount ${transaction.type}`}>
-                      {transaction.type === "credit" ? "+" : "-"}₹
-                      {Math.abs(transaction.amount).toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </div>
-
-                    <div className="transaction-dropdown">▼</div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p>No transactions yet.</p>
               )}
